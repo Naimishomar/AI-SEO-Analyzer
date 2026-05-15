@@ -6,6 +6,7 @@ import connectDB from "./db/db.js";
 import authRoute from "./routes/auth.route.js";
 import rankRoute from "./routes/rank.route.js";
 import analysisRoute from "./routes/analysis.route.js";
+import { startRankTrackingCron } from "./cron/rankTracking.cron.js";
 dotenv.config({quiet: true});
 
 const app = express();
@@ -21,6 +22,9 @@ app.use(cookieParser());
 app.use("/api/auth", authRoute);
 app.use("/api/rank", rankRoute);
 app.use("/api/analysis", analysisRoute);
+
+//start cron-jobs
+startRankTrackingCron();
 
 app.get("/", (req,res)=>{
     res.send("Server never gets down!");
