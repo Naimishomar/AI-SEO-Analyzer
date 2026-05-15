@@ -13,7 +13,7 @@ import { Toaster } from "react-hot-toast";
 import { useAuth } from "./context/AuthContext";
 
 export default function App() {
-    const { user, loading } = useAuth();
+    const { user } = useAuth();
     const location = useLocation();
 
     const hideNavbar = ["/login", "/register"].includes(location.pathname);

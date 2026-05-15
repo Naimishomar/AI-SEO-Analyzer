@@ -1,4 +1,5 @@
 import Analysis from "../models/analysis.model.js";
+import { analyseSeoData } from "../services/gemini.service.js";
 
 
 export const analyseUrl = async(req,res)=>{
@@ -30,7 +31,7 @@ export const analyseUrl = async(req,res)=>{
                 return;
             }
             //Analyse with Gemini AI
-            
+            const aiResult = await analyseSeoData(scrapeResult.data);
         } catch (bgError) {
             console.error("Background scrape error:", bgError.message);
             try {
