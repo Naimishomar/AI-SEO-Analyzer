@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { SearchIcon, GlobeIcon, FileSearchIcon, BrainIcon, CheckCircleIcon, AlertCircle, Loader2, ArrowRightIcon } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const STEPS = [
     { icon: <GlobeIcon size={22} />, label: "Connecting to browser", desc: "Creating cloud browser session..." },
@@ -12,6 +13,7 @@ const STEPS = [
 ];
 
 export default function Analyze() {
+    const { api } = useAuth();
     const [url, setUrl] = useState("");
     const [analyzing, setAnalyzing] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -29,13 +31,50 @@ export default function Analyze() {
         setAnalyzing(true);
         setCurrentStep(0);
 
-        setTimeout(() => setCurrentStep(1), 1000);
-        setTimeout(() => setCurrentStep(2), 3000);
-        setTimeout(() => setCurrentStep(3), 6000);
-        setTimeout(() => {
+        try {
+            setCurrentStep(0);
+            const response = await api.post("/api/analysis/analyze", { url: targetUrl.startsWith("http") ? targetUrl : `http://${targetUrl}` });
+            if (!response.data.success) {
+                throw new Error(response.data.message);
+            }
+            const id = response.data.analysisId;
+            setCurrentStep(1);
+            let attempts = 0;
+            const maxAttempts = 60;
+
+            pollRef.current = setInterval(async()=>{
+                attempts++;
+                if(attempts > maxAttempts){
+                    if(pollRef.current) clearInterval(pollRef.current);
+                    setError("Analyzing website timed out. Please try again.");
+                    setAnalyzing(false);
+                    return;
+                }
+                try {
+                    const check = await api.get(`/api/analysis/${id}`);
+                    const analysis = check.data.analysis;
+                    if(analysis.status === "completed"){
+                        if(pollRef.current) clearInterval(pollRef.current);
+                        setCurrentStep(3);
+                        setTimeout(() => navigate(`/report/${id}`), 1000);
+                    }
+                    else if(analysis.status === "failed"){
+                        if(pollRef.current) clearInterval(pollRef.current);
+                        setError("Analysis failed. The AI model might be down");
+                        setAnalyzing(false);
+                    }
+                    else{
+                        if(attempts > 5) setCurrentStep(2);
+                    }
+                } catch {
+                    //ignore
+                }
+            }, 2000);
+        } catch (error: any) {
+            console.error("Error analyzing website:", error.message);
+            setError(error.response?.data?.message || "Internal server error");
             setAnalyzing(false);
-            navigate(`/report/id123`);
-        }, 8000);
+        }
     };
 
     const handleSubmit = (e: React.SubmitEvent) => {
